@@ -8,6 +8,7 @@ import com.sky.service.DishService;
 import com.sky.vo.DishVO;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Set;
 
 import io.swagger.annotations.ApiOperation;
 
@@ -27,11 +29,16 @@ import io.swagger.annotations.ApiOperation;
 public class DishController {
   @Autowired
   private DishService dishService;
+
+  @Autowired
+  private RedisTemplate redisTemplate;
+
   @PostMapping
   @ApiOperation("add new food")
   public Result save(@RequestBody DishDTO dishDTO) {
     dishService.saveWithFlavor(dishDTO);
-
+    String key = "dish_" + dishDTO.getCategoryId();
+    clean(key);
     return Result.success();
   }
 
@@ -46,6 +53,7 @@ public class DishController {
   @ApiOperation("删除菜品")
   public Result delete(@RequestParam List<Long> ids) {
     dishService.deleteBatch(ids);
+    clean("dish_*");
     return Result.success();
   }
 
@@ -59,7 +67,13 @@ public class DishController {
   @PutMapping
   public Result modify(@RequestBody DishDTO dishDTO) {
     dishService.updateWithFlavor(dishDTO);
+    clean("dish_*");
 
     return Result.success();
+  }
+
+  private void clean(String pattern) {
+    Set keys = redisTemplate.keys(pattern);
+    redisTemplate.delete(keys);
   }
 }
